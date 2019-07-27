@@ -7,12 +7,6 @@ const _ = require('lodash');
  */
 
 module.exports = {
-  layout: async (ctx) => {
-    const {source} = ctx.query;
-
-    return ctx.send(_.get(strapi.plugins, [source, 'config', 'layout'], {}));
-  },
-
   models: async ctx => {
     const pluginsStore = strapi.store({
       environment: '',
@@ -21,6 +15,7 @@ module.exports = {
     });
 
     const models = await pluginsStore.get({ key: 'schema' });
+
     ctx.body = {
       models,
     };
@@ -69,6 +64,8 @@ module.exports = {
     try {
       // Create an entry using `queries` system
       ctx.body = await strapi.plugins['content-manager'].services['contentmanager'].add(ctx.params, ctx.request.body, source);
+
+      strapi.emit('didCreateFirstContentTypeEntry', ctx.params, source);
     } catch(error) {
       strapi.log.error(error);
       ctx.badRequest(null, ctx.request.admin ? [{ messages: [{ id: error.message, field: error.field }] }] : error.message);

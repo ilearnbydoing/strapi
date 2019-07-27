@@ -8,7 +8,7 @@
 const _ = require('lodash');
 const request = require('request');
 
-// Purest strategies.
+// Purest strategies.<
 const Purest = require('purest');
 
 /**
@@ -45,10 +45,8 @@ exports.connect = (provider, query) => {
       }
 
       try {
-        const users = await strapi.query('user', 'users-permissions').find({
-          where: {
-            email: profile.email
-          }
+        const users = await strapi.plugins['users-permissions'].queries('user', 'users-permissions').find({
+          email: profile.email
         });
 
         const advanced = await strapi.store({
@@ -73,7 +71,7 @@ exports.connect = (provider, query) => {
         }
 
         // Retrieve default role.
-        const defaultRole = await strapi.query('role', 'users-permissions').findOne({ type: advanced.default_role }, []);
+        const defaultRole = await strapi.plugins['users-permissions'].queries('role', 'users-permissions').findOne({ type: advanced.default_role }, []);
 
         // Create the new user.
         const params = _.assign(profile, {
@@ -81,7 +79,7 @@ exports.connect = (provider, query) => {
           role: defaultRole._id || defaultRole.id
         });
 
-        const createdUser = await strapi.query('user', 'users-permissions').create(params);
+        const createdUser = await strapi.plugins['users-permissions'].queries('user', 'users-permissions').create(params);
 
         return resolve([createdUser, null]);
       } catch (err) {
@@ -161,17 +159,37 @@ const getProfile = async (provider, query, callback) => {
       break;
     }
     case 'google': {
-      const google = new Purest({
-        provider: 'google'
-      });
+      const config = {
+        "google": {
+          "https://www.googleapis.com": {
+            "__domain": {
+              "auth": {
+                "auth": {"bearer": "[0]"}
+              }
+            },
+            "{endpoint}": {
+              "__path": {
+                "alias": "__default"
+              }
+            },
+            "oauth/[version]/{endpoint}": {
+              "__path": {
+                "alias": "oauth",
+                "version": "v3"
+              }
+            }
+          }
+        }
+      }
+      const google = new Purest({provider: 'google', config})
 
-      google.query('plus').get('people/me').auth(access_token).request((err, res, body) => {
+      google.query('oauth').get('tokeninfo').qs({access_token}).request((err, res, body) => {
         if (err) {
           callback(err);
         } else {
           callback(null, {
-            username: body.displayName || body.emails[0].value,
-            email: body.emails[0].value
+            username: body.email.split("@")[0],
+            email: body.email
           });
         }
       });

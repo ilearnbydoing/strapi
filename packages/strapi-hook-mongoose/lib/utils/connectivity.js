@@ -1,14 +1,10 @@
 'use strict';
 
-// Node.js core.
-const execSync = require('child_process').execSync;
-const path = require('path');
+module.exports = async ({ connection }) => {
+  const Mongoose = require('mongoose');
 
-module.exports = (scope, success, error) => {
-  const Mongoose = require(path.resolve(`${scope.tmpPath}/node_modules/mongoose`));
-
-  const { username, password } = scope.database.settings;
-  const { authenticationDatabase, ssl } = scope.database.options;
+  const { username, password, srv } = connection.settings;
+  const { authenticationDatabase, ssl } = connection.options;
 
   const connectOptions = {};
 
@@ -26,17 +22,20 @@ module.exports = (scope, success, error) => {
 
   connectOptions.ssl = ssl ? true : false;
   connectOptions.useNewUrlParser = true;
+  connectOptions.dbName = connection.settings.database;
 
-  Mongoose.connect(`mongodb://${scope.database.settings.host}:${scope.database.settings.port}/${scope.database.settings.database}`, connectOptions, function (err) {
-    if (err) {
-      console.log('⚠️ Database connection has failed! Make sure your database is running.');
-      return error();
+  return Mongoose.connect(
+    `mongodb${srv ? '+srv' : ''}://${connection.settings.host}${
+      !srv ? `:${connection.settings.port}` : ''
+    }/`,
+    connectOptions
+  ).then(
+    () => {
+      Mongoose.connection.close();
+    },
+    error => {
+      Mongoose.connection.close();
+      throw error;
     }
-
-    Mongoose.connection.close();
-
-    execSync(`rm -r "${scope.tmpPath}"`);
-
-    success();
-  });
+  );
 };

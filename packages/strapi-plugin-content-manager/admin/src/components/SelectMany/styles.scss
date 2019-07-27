@@ -1,7 +1,6 @@
 .selectMany { /* stylelint-disable */
-  padding-bottom: 19px;
+  padding-bottom: 20px;
   margin-bottom: 0px;
-  overflow-x: hidden;
 
   label{
     font-size: 1.3rem;
@@ -36,20 +35,26 @@
 }
 
 .selectManyUpdate{
-  padding-bottom: 18px !important;
+  padding-bottom: 15px !important;
+}
+
+.select{
+  margin-bottom: 0px !important;
 }
 
 .sortableList {
-  max-height: 110px;
+  overflow: hidden;
+  max-height: 116px;
+  margin-bottom: -9px;
 
   > ul {
-    margin: -21px -20px 0;
+    margin: 4px -20px 0;
     padding: 0 20px !important;
     list-style: none !important;
-    overflow: scroll;
+    overflow: auto;
     max-height: 110px;
   }
- 
+
 }
 
 .sortableListLong {
@@ -71,26 +76,27 @@
   }
 }
 
+.sortableListItemHover {
+  &:hover {
+    cursor: pointer;
+  }
+}
+
 .sortableListItem {
   display: flex;
   flex-wrap: nowrap;
   align-content: center;
   justify-content: space-between;
   height: 27px;
-
-
-  &:hover{
-    cursor: pointer;
-
-  }
+  background-color: transparent !important;
 
   &:active{
     .dragHandle{
-      cursor: pointer;
-  
+      // cursor: pointer;
+
       > span {
         background: #AED4FB;
-      } 
+      }
     }
   }
 
@@ -98,7 +104,7 @@
     outline: none;
     text-decoration: none;
     margin-top: -1px;
-  
+
     > span {
       vertical-align: middle;
       position: relative;
@@ -109,7 +115,7 @@
       background: #B3B5B9;
       overflow: visible !important;
       transition: background .25s ease-out;
-      
+
       &:before, &:after{
         content: '';
         display: inline-block;
@@ -117,23 +123,24 @@
         height: 1px;
         background: inherit;
       }
-  
+
       &:before{
         position: absolute;
         top: -2px;
         left: 0;
       }
-  
+
       &:after{
         position: absolute;
         bottom: -2px;
         left: 0;
       }
     }
-    
+
   }
 
   > div {
+    width: 90%;
     span {
       overflow: hidden;
       white-space: nowrap;
@@ -165,9 +172,12 @@
     &:last-of-type{
       display: inline-block;
       height: 100%;
+      padding-right: 0px;
       line-height: 27px;
       text-align: right;
-      padding-right: 0px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
 
       img{
         display: inline-block;

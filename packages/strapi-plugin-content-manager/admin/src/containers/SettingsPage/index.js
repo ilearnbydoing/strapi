@@ -1,5 +1,5 @@
 /**
- * 
+ *
  * SettingsPage
  */
 
@@ -8,26 +8,29 @@ import { connect } from 'react-redux';
 import { bindActionCreators, compose } from 'redux';
 import { createStructuredSelector } from 'reselect';
 import cn from 'classnames';
-import { get, sortBy } from 'lodash';
+import { get, isObject, sortBy } from 'lodash';
 import PropTypes from 'prop-types';
 
-import { onChange, onSubmit, onReset } from 'containers/App/actions';
-import { makeSelectModifiedSchema, makeSelectSubmitSuccess } from 'containers/App/selectors';
+import {
+  InputsIndex as Input,
+  PluginHeader,
+  PopUpWarning,
+} from 'strapi-helper-plugin';
 
-import Input from 'components/InputsIndex';
-import PluginHeader from 'components/PluginHeader';
-import PopUpWarning from 'components/PopUpWarning';
+import Block from '../../components/Block';
+import SettingsRow from '../../components/SettingsRow';
 
-import Block from 'components/Block';
-import SettingsRow from 'components/SettingsRow';
+import pluginId from '../../pluginId';
 
-import injectReducer from 'utils/injectReducer';
-import injectSaga from 'utils/injectSaga';
+import { onChange, onSubmit, onReset } from '../App/actions';
+import {
+  makeSelectModifiedSchema,
+  makeSelectSubmitSuccess,
+} from '../App/selectors';
 
 import reducer from './reducer';
 import saga from './saga';
 import styles from './styles.scss';
-
 import forms from './forms.json';
 
 class SettingsPage extends React.PureComponent {
@@ -42,80 +45,115 @@ class SettingsPage extends React.PureComponent {
   componentWillUnmount() {
     this.props.onReset();
   }
-  
+
   getModels = (data = this.props.schema.models, destination = '/') => {
     const models = Object.keys(data).reduce((acc, curr) => {
       if (curr !== 'plugins') {
-  
-        if (!data[curr].fields && _.isObject(data[curr])) {
-          return this.getModels(data[curr], `${destination}${curr}/`);
+        if (!data[curr].fields && isObject(data[curr])) {
+          return acc.concat(
+            this.getModels(data[curr], `${destination}${curr}/`)
+          );
         }
-        
-        return acc.concat([{ name: curr, destination: `${destination}${curr}` }]);
-      } 
-    
-      return this.getModels(data[curr], `${destination}${curr}/`);
+
+        return acc.concat([
+          { name: curr, destination: `${destination}${curr}` },
+        ]);
+      }
+
+      return acc.concat(this.getModels(data[curr], `${destination}${curr}/`));
     }, []);
 
-    return sortBy(
-      models.filter(obj => obj.name !== 'permission' && obj.name !== 'role'),
-      ['name'],
+    return sortBy(models.filter(obj => !!this.props.schema.layout[obj.name]), [
+      'name',
+    ]);
+  };
+
+  getPluginHeaderActions = () => [
+    {
+      id: 'cancelChanges',
+      label: 'content-manager.popUpWarning.button.cancel',
+      kind: 'secondary',
+      onClick: this.handleReset,
+      type: 'button',
+    },
+    {
+      kind: 'primary',
+      label: 'content-manager.containers.Edit.submit',
+      onClick: this.handleSubmit,
+      type: 'submit',
+    },
+  ];
+
+  getValue = input => {
+    const {
+      schema: { generalSettings },
+    } = this.props;
+    const value = get(
+      generalSettings,
+      input.name.split('.')[1],
+      input.type === 'toggle' ? false : 10
     );
-  }
-
-  getPluginHeaderActions = () => (
-    [
-      {
-        label: 'content-manager.popUpWarning.button.cancel',
-        kind: 'secondary',
-        onClick: this.handleReset,
-        type: 'button',
-      },
-      {
-        kind: 'primary',
-        label: 'content-manager.containers.Edit.submit',
-        onClick: this.handleSubmit,
-        type: 'submit',
-      },
-    ]
-  );
-
-  getValue = (input) => {
-    const { schema: { generalSettings } } = this.props;
-    const value = get(generalSettings, input.name.split('.')[1], input.type === 'toggle' ? false : 10);
 
     return input.type === 'toggle' ? value : value.toString();
-  }
+  };
 
-  handleClick = (destination) => {
-    const { location: { pathname } } = this.props;
-    this.props.history.push(`${pathname}${destination}`);
-  }
+  handleClick = destination => {
+    const {
+      location: { pathname },
+    } = this.props;
 
-  handleReset = (e) => {
+    this.props.history.push(`${pathname}/list-settings${destination}`);
+  };
+
+  handleConfirmReset = () => {
+    this.props.onReset();
+    this.toggleWarningCancel();
+  };
+
+  handleReset = e => {
     e.preventDefault();
     this.setState({ showWarningCancel: true });
-  }
+  };
 
-  handleSubmit = (e) => {
+  handleSubmit = e => {
     e.preventDefault();
     this.setState({ showWarning: true });
-  }
+  };
 
-  toggle = () => this.setState(prevState => ({ showWarning: !prevState.showWarning }));
+  toggle = () =>
+    this.setState(prevState => ({ showWarning: !prevState.showWarning }));
 
-  toggleWarningCancel = () => this.setState(prevState => ({ showWarningCancel: !prevState.showWarningCancel }));
+  toggleWarningCancel = () =>
+    this.setState(prevState => ({
+      showWarningCancel: !prevState.showWarningCancel,
+    }));
+
+  renderForm = input => (
+    <Input
+      key={input.name}
+      onChange={this.props.onChange}
+      value={this.getValue(input)}
+      {...input}
+    />
+  );
+
+  renderRow = model => (
+    <SettingsRow key={model.name} {...model} onClick={this.handleClick} />
+  );
 
   render() {
     const { showWarning, showWarningCancel } = this.state;
-    const { onChange, onReset, onSubmit } = this.props;
+    const { onSubmit } = this.props;
 
     return (
       <div className={cn('container-fluid', styles.containerFluid)}>
         <PluginHeader
           actions={this.getPluginHeaderActions()}
           title="Content Manager"
-          description={{ id: 'content-manager.containers.SettingsPage.pluginHeaderDescription' }}
+          description={{
+            id:
+              'content-manager.containers.SettingsPage.pluginHeaderDescription',
+          }}
         />
         <PopUpWarning
           isOpen={showWarning}
@@ -127,9 +165,7 @@ class SettingsPage extends React.PureComponent {
             confirm: 'content-manager.popUpWarning.button.confirm',
           }}
           popUpWarningType="danger"
-          onConfirm={() => {
-            onSubmit();
-          }}
+          onConfirm={() => onSubmit(this.context)}
         />
         <PopUpWarning
           isOpen={showWarningCancel}
@@ -141,10 +177,7 @@ class SettingsPage extends React.PureComponent {
             confirm: 'content-manager.popUpWarning.button.confirm',
           }}
           popUpWarningType="danger"
-          onConfirm={() => {
-            onReset();
-            this.toggleWarningCancel();
-          }}
+          onConfirm={this.handleConfirmReset}
         />
         <div className={cn('row', styles.container)}>
           <Block
@@ -153,29 +186,22 @@ class SettingsPage extends React.PureComponent {
           >
             <form onSubmit={this.handleSubmit} className={styles.ctmForm}>
               <div className="row">
-                <div className="col-md-10">
-                  <div className="row">
-                    {forms.inputs.map(input => (
-                      <Input
-                        key={input.name}
-                        onChange={onChange}
-                        value={this.getValue(input)}
-                        {...input}
-                      />
-                    ))}
-                  </div>
+                <div className="col-md-12">
+                  <div className="row">{forms.inputs.map(this.renderForm)}</div>
                 </div>
               </div>
             </form>
           </Block>
+          {/* LIST */}
           <Block
             title="content-manager.containers.SettingsPage.Block.contentType.title"
             description="content-manager.containers.SettingsPage.Block.contentType.description"
           >
             <div className={styles.contentTypesWrapper}>
-              {this.getModels().map(model => <SettingsRow key={model.name} {...model} onClick={this.handleClick} />)}
+              {this.getModels().map(this.renderRow)}
             </div>
           </Block>
+          {/* LIST */}
         </div>
       </div>
     );
@@ -183,6 +209,10 @@ class SettingsPage extends React.PureComponent {
 }
 
 SettingsPage.defaultProps = {};
+
+SettingsPage.contextTypes = {
+  emitEvent: PropTypes.func,
+};
 
 SettingsPage.propTypes = {
   history: PropTypes.object.isRequired,
@@ -194,28 +224,32 @@ SettingsPage.propTypes = {
   submitSuccess: PropTypes.bool.isRequired,
 };
 
-const mapDispatchToProps = (dispatch) => (
+const mapDispatchToProps = dispatch =>
   bindActionCreators(
     {
       onChange,
       onReset,
       onSubmit,
     },
-    dispatch,
-  )
-);
-
+    dispatch
+  );
 const mapStateToProps = createStructuredSelector({
   schema: makeSelectModifiedSchema(),
   submitSuccess: makeSelectSubmitSuccess(),
 });
-
-const withConnect = connect(mapStateToProps, mapDispatchToProps);
-const withReducer = injectReducer({ key: 'settingsPage', reducer });
-const withSaga = injectSaga({ key: 'settingsPage', saga });
+const withConnect = connect(
+  mapStateToProps,
+  mapDispatchToProps
+);
+const withReducer = strapi.injectReducer({
+  key: 'settingsPage',
+  reducer,
+  pluginId,
+});
+const withSaga = strapi.injectSaga({ key: 'settingsPage', saga, pluginId });
 
 export default compose(
   withReducer,
   withSaga,
-  withConnect,
+  withConnect
 )(SettingsPage);
